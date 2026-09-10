@@ -25,6 +25,14 @@ EINTR/EAGAIN, failed input cleanup, failure propagation and initialization.
 The initialization test checks 115200 baud in the PTY termios settings; it does
 not measure a physical line rate.
 
+Packet dumps are disabled by default: synchronous stdout/stderr output can block
+the caller even after serial I/O has completed. Error diagnostics remain enabled.
+Configure CMake with `-DSERVO_SERIAL_DEBUG=ON` to restore packet dumps for
+diagnosis; direct header consumers can define `SERVO_SERIAL_DEBUG`.
+Run the same PTY suite with `--debug-logging` to test that configuration.
+The coalesced-frame case checks that packet logging follows the selected mode.
+This option does not change protocol validation, baudrate or service signatures.
+
 Known-limit scenarios are reported **separately**, not as fixed regressions:
 
 - After a timeout, an old response with the same ID/address/length can be
