@@ -101,6 +101,23 @@ int main() {
   CHECK(bus.calls==c.servo_id);
   CHECK(c.setJointAnglesOfGroup("all",all,1));
   CHECK(bus.calls==c.servo_id);
+  // Reject invalid lengths before reading any element or sending a command.
+  OpenHRP::ServoControllerService::dSequence short_angles;
+  short_angles.data.assign(1,0.2);
+  bus.calls.clear();
+  CHECK(!c.setJointAngles(short_angles,1) && bus.calls.empty());
+  short_angles.data.clear();
+  CHECK(!c.setJointAngles(short_angles,1) && bus.calls.empty());
+  short_angles.data.assign(9,0.2);
+  CHECK(!c.setJointAngles(short_angles,1) && bus.calls.empty());
+  // A subset must not read past its ID/angle arrays.
+  c.joint_groups["subset"].push_back(4);
+  short_angles.data.assign(1,0.2);
+  CHECK(c.setJointAnglesOfGroup("subset",short_angles,1));
+  CHECK(bus.calls.size()==1 && bus.calls[0]==4);
+  c.joint_groups["unknown"].push_back(127);
+  bus.calls.clear();
+  CHECK(!c.setJointAnglesOfGroup("unknown",short_angles,1) && bus.calls.empty());
   bus.group_fail=true;
   CHECK(!c.setJointAngles(all,1));
   CHECK(!c.setJointAnglesOfGroup("all",all,1));
@@ -125,5 +142,6 @@ args.output.mkdir(parents=True, exist_ok=True)
 cpp = args.output / "controller-results.cpp"
 binary = args.output.resolve() / "controller-results"
 cpp.write_text(prefix + "\n".join(declarations) + "\n};\n" + "\n".join(bodies) + main)
-subprocess.run(["g++", "-std=gnu++98", str(cpp), "-o", str(binary)], check=True)
+subprocess.run(["g++", "-std=gnu++98", "-fsanitize=address,undefined",
+                "-fno-omit-frame-pointer", "-no-pie", str(cpp), "-o", str(binary)], check=True)
 subprocess.run([str(binary)], check=True, timeout=5)

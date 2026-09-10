@@ -43,8 +43,9 @@ python3 test/test-servo-controller-results.py \
 
 This compiles the actual selected method bodies with a fake bus. It checks
 failure returns, scalar angle conversion, full-group calls, all-ID OFF attempts
-and ON's stop-on-first-failure behavior. It is not a CORBA integration test and
-does not cover the separate pre-existing subset-group/input-length defects.
+and ON's stop-on-first-failure behavior. The input-validation follow-up also
+checks short/empty/oversized input, subset counts and unknown group IDs with
+ASan/UBSan. It is not a CORBA integration test.
 
 ## Optional existing-service integration
 
