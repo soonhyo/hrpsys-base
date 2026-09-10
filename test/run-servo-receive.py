@@ -30,6 +30,7 @@ def main():
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--suite", choices=list(SUITES), action="append")
     parser.add_argument("--sanitize", action="store_true")
+    parser.add_argument("--debug-logging", action="store_true")
     parser.add_argument("--compiler", default="g++")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -42,6 +43,8 @@ def main():
                    str(Path(__file__).with_name("test-servo-" + suite + ".cpp")),
                    "-lutil", "-o", str(binary)]
         command += ["-Wl,--wrap=" + name for name in wrappers]
+        if args.debug_logging:
+            command += ["-DSERVO_SERIAL_DEBUG"]
         if args.sanitize:
             command += ["-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-no-pie"]
         with (args.output / ("compile-" + suite + ".log")).open("w") as log:
@@ -58,6 +61,9 @@ def main():
             matched = status == 0
             if case == ["partial-error"]:
                 matched = matched and "2/9 bytes queued" in path.read_text()
+            if suite == "framing" and case == ["coalesced"]:
+                logged = "[ServoSerial] sending :" in path.read_text()
+                matched = matched and logged == args.debug_logging
             results.append({"suite": suite, "case": case, "status": status,
                             "known_limit": case in limitations, "matched": matched})
     failures = [r for r in results if not r["matched"]]
@@ -65,7 +71,8 @@ def main():
     limits = [r for r in results if r["known_limit"]]
     summary = {
         "header_sha256": hashlib.sha256((args.header_dir / "ServoSerial.h").read_bytes()).hexdigest(),
-        "sanitized": args.sanitize, "builds": builds, "results": results,
+        "sanitized": args.sanitize, "debug_logging": args.debug_logging,
+        "builds": builds, "results": results,
         "regression_cases": len(regular), "known_limit_cases": len(limits),
         "unexpected": len(failures),
     }
